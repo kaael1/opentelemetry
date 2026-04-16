@@ -1,0 +1,3 @@
+const port = process.env.PORT || 8787;
+const response = await fetch(`http://127.0.0.1:${port}/api/ai/index`, { method: 'POST' });
+console.log(JSON.stringify(await response.json(), null, 2));

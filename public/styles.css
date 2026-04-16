@@ -182,6 +182,144 @@ h2 {
   padding: 10px;
 }
 
+.ai-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(118, 217, 255, 0.08), transparent 38%),
+    linear-gradient(180deg, rgba(32, 35, 25, 0.94), rgba(16, 18, 14, 0.94));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 70px var(--shadow);
+}
+
+.ai-panel > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+#aiStatusText {
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 12px;
+}
+
+.beginner-guide {
+  background: rgba(7, 9, 6, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.beginner-guide summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  color: var(--green);
+  font-weight: 800;
+}
+
+.beginner-guide ol {
+  margin: 0;
+  padding: 0 18px 14px 32px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.ask-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) repeat(4, auto);
+  gap: 8px;
+}
+
+.ask-row input {
+  min-width: 0;
+  padding: 12px;
+  color: var(--ink);
+  background: #0b0d0a;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  outline: none;
+}
+
+.story-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.story-chip {
+  max-width: 100%;
+  padding: 8px 10px;
+  color: var(--cyan);
+  background: rgba(118, 217, 255, 0.08);
+  border: 1px solid rgba(118, 217, 255, 0.2);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.story-empty,
+.ai-empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ai-results {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-answer,
+.ai-doc {
+  width: 100%;
+  padding: 12px;
+  color: var(--ink);
+  background: rgba(8, 10, 7, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  text-align: left;
+}
+
+.ai-answer h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.ai-answer pre,
+.ai-doc p {
+  margin: 0;
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.ai-answer span,
+.ai-doc span {
+  display: block;
+  margin: 4px 0 7px;
+  color: var(--muted);
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 10px;
+}
+
+.ai-docs {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-doc {
+  cursor: pointer;
+}
+
+.ai-doc:hover {
+  border-color: var(--cyan);
+}
+
 .search {
   display: grid;
   grid-template-columns: auto minmax(180px, 420px);
@@ -620,6 +758,91 @@ button {
 .lane-log-row[data-status="timeout"],
 .lane-log-row[data-status="aborted"] {
   border-color: rgba(255, 107, 95, 0.45);
+}
+
+.guide-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5, 7, 5, 0.72);
+  backdrop-filter: blur(14px);
+}
+
+.guide-backdrop[hidden] {
+  display: none;
+}
+
+.guide-modal {
+  width: min(820px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  background:
+    linear-gradient(135deg, rgba(184, 243, 93, 0.09), transparent 44%),
+    #11140f;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.62);
+}
+
+.guide-modal > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.guide-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.guide-tabs button {
+  min-width: 0;
+  color: var(--muted);
+  background: rgba(242, 240, 229, 0.045);
+  border: 1px solid var(--line);
+}
+
+.guide-tabs button[data-active="true"] {
+  color: #071007;
+  background: var(--green);
+}
+
+.guide-content {
+  padding: 18px;
+}
+
+.guide-content h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.guide-content p,
+.guide-content li,
+.guide-never {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.guide-content ul {
+  margin: 12px 0 0;
+  padding-left: 20px;
+}
+
+.guide-never {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px 18px;
 }
 
 .event-panel {
@@ -1090,6 +1313,17 @@ button {
 
   .timeline-tools {
     grid-template-columns: 1fr;
+  }
+
+  .ask-row,
+  .guide-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-panel > header,
+  .guide-modal > header {
+    align-items: start;
+    flex-direction: column;
   }
 
   .lane-tools,

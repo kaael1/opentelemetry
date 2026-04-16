@@ -3,6 +3,9 @@ import { createReadStream, existsSync } from 'node:fs';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { extname, join, normalize, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { explain } from './ai/explain.mjs';
+import { aiStatus, ensureIndex, search as searchAI, similarEvent } from './ai/index.mjs';
+import { getStoryQuestions } from './ai/story-questions.mjs';
 
 const __dirname = resolve(fileURLToPath(new URL('.', import.meta.url)));
 const publicDir = join(__dirname, 'public');
@@ -950,6 +953,26 @@ function sendEvent(response, name, payload) {
   response.write(`data: ${JSON.stringify(payload)}\n\n`);
 }
 
+function sendJson(response, status, payload) {
+  response.writeHead(status, { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' });
+  response.end(JSON.stringify(payload));
+}
+
+async function readJsonBody(request) {
+  let raw = '';
+  for await (const chunk of request) raw += chunk;
+  if (!raw.trim()) return {};
+  return JSON.parse(raw);
+}
+
+function handleApiError(response, error) {
+  const status = Number(error.status || 500);
+  sendJson(response, status, {
+    error: error.message || 'Unexpected error',
+    status,
+  });
+}
+
 async function refreshLoop() {
   while (true) {
     try {
@@ -981,9 +1004,73 @@ async function serveStatic(request, response) {
 const server = createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
 
+  if (url.pathname === '/api/ai/status') {
+    try {
+      sendJson(response, 200, await aiStatus(latestSnapshot));
+    } catch (error) {
+      handleApiError(response, error);
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/ai/index' && request.method === 'POST') {
+    try {
+      const index = await ensureIndex(latestSnapshot, { force: true });
+      sendJson(response, 200, { docs: index.docs.length, mode: index.mode, ok: true });
+    } catch (error) {
+      handleApiError(response, error);
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/ai/search') {
+    try {
+      const query = url.searchParams.get('q') || '';
+      const limit = Number(url.searchParams.get('limit') || 10);
+      const rerank = url.searchParams.get('rerank') !== '0';
+      sendJson(response, 200, await searchAI(latestSnapshot, { limit, query, rerank }));
+    } catch (error) {
+      handleApiError(response, error);
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/ai/similar-event') {
+    try {
+      const id = url.searchParams.get('id') || '';
+      const limit = Number(url.searchParams.get('limit') || 8);
+      sendJson(response, 200, await similarEvent(latestSnapshot, { id, limit }));
+    } catch (error) {
+      handleApiError(response, error);
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/ai/explain' && request.method === 'POST') {
+    try {
+      sendJson(response, 200, await explain(latestSnapshot, await readJsonBody(request)));
+    } catch (error) {
+      handleApiError(response, error);
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/ai/story-questions') {
+    try {
+      sendJson(response, 200, {
+        questions: getStoryQuestions({
+          limit: Number(url.searchParams.get('limit') || 8),
+          rootSessionId: url.searchParams.get('rootSessionId') || '',
+        }),
+      });
+    } catch (error) {
+      handleApiError(response, error);
+    }
+    return;
+  }
+
   if (url.pathname === '/api/state') {
-    response.writeHead(200, { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' });
-    response.end(latestText);
+    sendJson(response, 200, latestSnapshot);
     return;
   }
 

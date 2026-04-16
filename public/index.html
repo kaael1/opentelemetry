@@ -38,6 +38,36 @@
           <span>ativos</span>
         </label>
         <button id="openState" type="button">JSON</button>
+        <button id="helpButton" aria-label="Abrir guia" type="button">?</button>
+      </section>
+
+      <section class="ai-panel" aria-label="Ask Telemetry">
+        <header>
+          <div>
+            <p class="eyebrow">Story Mode</p>
+            <h2>Ask Telemetry</h2>
+          </div>
+          <span id="aiStatusText">checando IA</span>
+        </header>
+        <details class="beginner-guide">
+          <summary>Como usar em 5 passos</summary>
+          <ol>
+            <li>Veja se o status no topo está <strong>ao vivo</strong>.</li>
+            <li>Comece por <strong>Parallel Lanes</strong> para entender quem trabalhou em paralelo.</li>
+            <li>Clique em <strong>focar</strong> para seguir um agente específico.</li>
+            <li>Abra eventos da <strong>Timeline</strong> para ver comandos, outputs e arquivos.</li>
+            <li>Use perguntas prontas abaixo para transformar os logs em uma história investigável.</li>
+          </ol>
+        </details>
+        <div class="ask-row">
+          <input id="aiQuestion" placeholder="Pergunte: onde começou a dar errado?" />
+          <button id="aiSearch" type="button">Buscar</button>
+          <button id="aiNarrate" type="button">Narrar sessão</button>
+          <button id="aiExplainFailure" type="button">Explicar falha</button>
+          <button id="aiSimilar" type="button">Parecidos</button>
+        </div>
+        <div id="storyChips" class="story-chips"></div>
+        <div id="aiResults" class="ai-results"></div>
       </section>
 
       <section class="grid">
@@ -128,6 +158,30 @@
           <div id="events" class="events"></div>
         </article>
       </section>
+
+      <div id="guideBackdrop" class="guide-backdrop" hidden>
+        <section class="guide-modal" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+          <header>
+            <div>
+              <p class="eyebrow">Primeira leitura</p>
+              <h2 id="guideTitle">Como ler este painel</h2>
+            </div>
+            <button id="guideClose" aria-label="Fechar guia" type="button">Fechar</button>
+          </header>
+          <nav class="guide-tabs" aria-label="Seções do guia">
+            <button data-guide-tab="start" type="button">Comece aqui</button>
+            <button data-guide-tab="lanes" type="button">Lanes</button>
+            <button data-guide-tab="timeline" type="button">Timeline</button>
+            <button data-guide-tab="ask" type="button">Ask Telemetry</button>
+            <button data-guide-tab="questions" type="button">Perguntas</button>
+          </nav>
+          <div id="guideContent" class="guide-content"></div>
+          <label class="guide-never">
+            <input id="guideDontShow" type="checkbox" />
+            <span>Não mostrar automaticamente de novo</span>
+          </label>
+        </section>
+      </div>
     </main>
 
     <script src="/app.js" type="module"></script>

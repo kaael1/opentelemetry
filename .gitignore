@@ -1,6 +1,7 @@
 node_modules/
 .env
 .env.*
+.opentelemetry-cache/
 *.log
 dashboard.out.log
 dashboard.err.log

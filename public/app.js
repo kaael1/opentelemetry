@@ -3,6 +3,12 @@ const state = {
   laneFocusedAgent: '',
   laneSort: 'recent',
   liveOnly: false,
+  aiAnswer: null,
+  aiLoading: false,
+  aiResults: null,
+  aiStatus: null,
+  guideOpen: false,
+  guideTab: 'start',
   problemsOnly: false,
   replayEnabled: false,
   replaySpeed: 1,
@@ -11,6 +17,7 @@ const state = {
   timelineAgent: '',
   timelineType: '',
   timelineWindow: 'all',
+  storyQuestions: [],
 };
 
 let replayTimer = null;
@@ -18,12 +25,24 @@ let replayTimer = null;
 const el = {
   agentCards: document.querySelector('#agentCards'),
   agentCount: document.querySelector('#agentCount'),
+  aiExplainFailure: document.querySelector('#aiExplainFailure'),
+  aiNarrate: document.querySelector('#aiNarrate'),
+  aiQuestion: document.querySelector('#aiQuestion'),
+  aiResults: document.querySelector('#aiResults'),
+  aiSearch: document.querySelector('#aiSearch'),
+  aiSimilar: document.querySelector('#aiSimilar'),
+  aiStatusText: document.querySelector('#aiStatusText'),
   clearLaneFocus: document.querySelector('#clearLaneFocus'),
   connectionDot: document.querySelector('#connectionDot'),
   connectionText: document.querySelector('#connectionText'),
   eventCount: document.querySelector('#eventCount'),
   events: document.querySelector('#events'),
   filterInput: document.querySelector('#filterInput'),
+  guideBackdrop: document.querySelector('#guideBackdrop'),
+  guideClose: document.querySelector('#guideClose'),
+  guideContent: document.querySelector('#guideContent'),
+  guideDontShow: document.querySelector('#guideDontShow'),
+  helpButton: document.querySelector('#helpButton'),
   laneCount: document.querySelector('#laneCount'),
   laneSort: document.querySelector('#laneSort'),
   lanes: document.querySelector('#lanes'),
@@ -42,6 +61,7 @@ const el = {
   rootCount: document.querySelector('#rootCount'),
   rootSessions: document.querySelector('#rootSessions'),
   showCompletedLanes: document.querySelector('#showCompletedLanes'),
+  storyChips: document.querySelector('#storyChips'),
   timelineAgent: document.querySelector('#timelineAgent'),
   timelineSummary: document.querySelector('#timelineSummary'),
   timelineType: document.querySelector('#timelineType'),
@@ -82,6 +102,34 @@ const eventLabel = {
   update_plan: 'plan',
   user_message: 'user',
   wait_agent: 'wait',
+};
+
+const guideTabs = {
+  ask: {
+    title: 'Ask Telemetry',
+    body: 'Use o campo de pergunta para buscar evidências, narrar uma sessão ou explicar falhas. A busca textual funciona sempre; embeddings, rerank e LLM local aparecem quando a IA estiver configurada.',
+    bullets: ['Buscar encontra eventos parecidos.', 'Narrar sessão transforma logs em arco técnico.', 'Explicar falha separa evidência de inferência.', 'Resultados clicáveis focam agentes e eventos.'],
+  },
+  lanes: {
+    title: 'Parallel Lanes',
+    body: 'Cada lane é uma thread de trabalho. A main thread fica junto dos subagentes para mostrar paralelismo, waits e conclusões.',
+    bullets: ['Segmentos mostram fases reais.', 'Heatmap mostra intensidade.', 'Badges resumem comandos, patches, waits e erros.', 'Focar segue um agente no painel todo.'],
+  },
+  questions: {
+    title: 'Perguntas',
+    body: 'As perguntas prontas são atalhos de storytelling. Elas ajudam a transformar telemetria bruta em começo, conflito, clímax, resolução e próximos passos.',
+    bullets: ['Use perguntas simples primeiro.', 'Abra evidências antes de confiar na conclusão.', 'Se não houver IA local, os chips ainda filtram a investigação.'],
+  },
+  start: {
+    title: 'Comece aqui',
+    body: 'Este painel lê suas sessões locais do Codex e mostra agentes, comandos, patches e eventos em tempo real.',
+    bullets: ['Confirme que o topo está ao vivo.', 'Olhe métricas e agentes ativos.', 'Use Parallel Lanes para ver quem trabalhou.', 'Use Timeline para abrir a evidência.'],
+  },
+  timeline: {
+    title: 'Timeline',
+    body: 'A Timeline é a história detalhada. Ela agrupa eventos por sessão, mostra duração, status, comandos, arquivos e outputs resumidos.',
+    bullets: ['Filtre por agente, tipo e janela.', 'Marque problemas para ver falhas.', 'Expanda eventos para ver detalhes.', 'Use evidências para validar narrativas.'],
+  },
 };
 
 const phaseLabel = {
@@ -253,6 +301,79 @@ function renderMetrics(snapshot) {
   el.metricSessions.textContent = snapshot.stats.sessionFiles;
   el.metricEvents.textContent = snapshot.stats.recentEvents;
   el.lastUpdate.textContent = formatClock(snapshot.generatedAt);
+}
+
+function aiStatusLabel() {
+  const status = state.aiStatus;
+  if (!status) return 'checando IA';
+  if (!status.enabled) return 'IA desligada · busca textual ativa';
+  if (!status.dependency?.available) return 'IA sem dependência opcional';
+  if (!status.llm?.available) return 'embeddings prontos · LLM local ausente';
+  return 'IA local pronta';
+}
+
+function renderStoryChips() {
+  const questions = state.storyQuestions || [];
+  if (questions.length === 0) {
+    el.storyChips.innerHTML = '<span class="story-empty">perguntas carregando</span>';
+    return;
+  }
+  el.storyChips.innerHTML = questions
+    .map((question) => `<button class="story-chip" data-question-id="${escapeHtml(question.id)}" type="button">${escapeHtml(question.label)}</button>`)
+    .join('');
+}
+
+function renderAIResults() {
+  if (state.aiLoading) {
+    el.aiResults.innerHTML = '<div class="ai-empty">analisando telemetria...</div>';
+    return;
+  }
+
+  const answer = state.aiAnswer;
+  const results = state.aiResults;
+  if (!answer && !results) {
+    el.aiResults.innerHTML = '<div class="ai-empty">Faça uma pergunta ou escolha uma história pronta.</div>';
+    return;
+  }
+
+  const answerHtml = answer
+    ? `<article class="ai-answer"><h3>Resposta</h3><pre>${escapeHtml(answer.answer || answer)}</pre>${answer.llm ? `<span>${escapeHtml(answer.llm)}</span>` : ''}</article>`
+    : '';
+  const docs = results?.docs || answer?.docs || [];
+  const docsHtml = docs.length
+    ? `<div class="ai-docs">${docs
+        .slice(0, 8)
+        .map(
+          (doc) => `
+            <button class="ai-doc" data-agent-id="${escapeHtml(doc.metadata?.agentId || '')}" data-event-id="${escapeHtml(doc.metadata?.eventId || '')}" type="button">
+              <strong>${escapeHtml(doc.title || doc.kind)}</strong>
+              <span>${escapeHtml(doc.kind)} · ${escapeHtml(doc.metadata?.agentName || 'main')} · ${escapeHtml(doc.metadata?.status || '')}</span>
+              <p>${escapeHtml(doc.text || '')}</p>
+            </button>`,
+        )
+        .join('')}</div>`
+    : '';
+  el.aiResults.innerHTML = answerHtml + docsHtml;
+}
+
+function renderGuide() {
+  el.guideBackdrop.hidden = !state.guideOpen;
+  if (!state.guideOpen) return;
+  const tab = guideTabs[state.guideTab] || guideTabs.start;
+  for (const button of el.guideBackdrop.querySelectorAll('[data-guide-tab]')) {
+    button.dataset.active = button.dataset.guideTab === state.guideTab ? 'true' : 'false';
+  }
+  el.guideContent.innerHTML = `
+    <h3>${escapeHtml(tab.title)}</h3>
+    <p>${escapeHtml(tab.body)}</p>
+    <ul>${tab.bullets.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+}
+
+function renderAIPanel() {
+  el.aiStatusText.textContent = aiStatusLabel();
+  renderStoryChips();
+  renderAIResults();
+  renderGuide();
 }
 
 function renderLaneControls() {
@@ -527,6 +648,7 @@ function render() {
   const snapshot = state.snapshot;
   if (!snapshot) return;
   renderMetrics(snapshot);
+  renderAIPanel();
   renderLanes();
   renderAgentCards(filteredAgents());
   renderRootSessions(snapshot);
@@ -534,10 +656,88 @@ function render() {
   renderEvents();
 }
 
+async function refreshAIStatus() {
+  try {
+    const response = await fetch('/api/ai/status', { cache: 'no-store' });
+    state.aiStatus = await response.json();
+  } catch (error) {
+    state.aiStatus = { enabled: false, error: error.message };
+  }
+}
+
+async function refreshStoryQuestions() {
+  try {
+    const response = await fetch('/api/ai/story-questions?limit=8', { cache: 'no-store' });
+    const json = await response.json();
+    state.storyQuestions = json.questions || [];
+  } catch {
+    state.storyQuestions = [];
+  }
+}
+
+async function runAISearch(question) {
+  const query = String(question || el.aiQuestion.value || '').trim();
+  if (!query) return;
+  state.aiLoading = true;
+  state.aiAnswer = null;
+  state.aiResults = null;
+  renderAIPanel();
+  try {
+    const response = await fetch(`/api/ai/search?q=${encodeURIComponent(query)}&limit=10&rerank=1`, { cache: 'no-store' });
+    state.aiResults = await response.json();
+  } catch (error) {
+    state.aiAnswer = { answer: `Falha ao buscar: ${error.message}` };
+  } finally {
+    state.aiLoading = false;
+    render();
+  }
+}
+
+async function runAIExplain({ id = '', kind = 'session_story', question = '' } = {}) {
+  const prompt = String(question || el.aiQuestion.value || 'Conta essa sessão como uma história curta.').trim();
+  el.aiQuestion.value = prompt;
+  state.aiLoading = true;
+  state.aiAnswer = null;
+  state.aiResults = null;
+  renderAIPanel();
+  try {
+    const response = await fetch('/api/ai/explain', {
+      body: JSON.stringify({ id, kind, question: prompt }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+    state.aiAnswer = await response.json();
+  } catch (error) {
+    state.aiAnswer = { answer: `Falha ao explicar: ${error.message}` };
+  } finally {
+    state.aiLoading = false;
+    render();
+  }
+}
+
+async function runSimilarEvents() {
+  const event = (state.snapshot?.events || []).find((item) => item.isProblem) || state.snapshot?.events?.[0];
+  if (!event) return;
+  state.aiLoading = true;
+  state.aiAnswer = null;
+  state.aiResults = null;
+  renderAIPanel();
+  try {
+    const response = await fetch(`/api/ai/similar-event?id=${encodeURIComponent(event.id)}&limit=8`, { cache: 'no-store' });
+    state.aiResults = await response.json();
+  } catch (error) {
+    state.aiAnswer = { answer: `Falha ao buscar parecidos: ${error.message}` };
+  } finally {
+    state.aiLoading = false;
+    render();
+  }
+}
+
 async function fetchInitial() {
   const response = await fetch('/api/state', { cache: 'no-store' });
   if (!response.ok) return;
   state.snapshot = await response.json();
+  await Promise.all([refreshAIStatus(), refreshStoryQuestions()]);
   render();
 }
 
@@ -653,7 +853,75 @@ el.openState.addEventListener('click', () => {
   window.open('/api/state', '_blank', 'noopener,noreferrer');
 });
 
+el.aiSearch.addEventListener('click', () => runAISearch());
+
+el.aiNarrate.addEventListener('click', () => runAIExplain({ kind: 'session_story', question: 'Conta essa sessão como uma história curta.' }));
+
+el.aiExplainFailure.addEventListener('click', () => runAIExplain({ kind: 'blocker_analysis', question: 'Qual foi o primeiro sinal de problema?' }));
+
+el.aiSimilar.addEventListener('click', () => runSimilarEvents());
+
+el.aiQuestion.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') runAISearch();
+});
+
+el.storyChips.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-question-id]');
+  if (!button) return;
+  const question = state.storyQuestions.find((item) => item.id === button.dataset.questionId);
+  if (!question) return;
+  el.aiQuestion.value = question.label;
+  if (question.preferredStatuses?.length) state.problemsOnly = true;
+  if (question.preferredEventTypes?.[0]) state.timelineType = question.preferredEventTypes[0];
+  if (el.problemsOnly) el.problemsOnly.checked = state.problemsOnly;
+  if (el.timelineType) el.timelineType.value = state.timelineType;
+  runAIExplain({ kind: question.explanationMode, question: question.label });
+});
+
+el.aiResults.addEventListener('click', (event) => {
+  const item = event.target.closest('.ai-doc');
+  if (!item) return;
+  const agentId = item.dataset.agentId || '';
+  if (agentId) {
+    state.laneFocusedAgent = agentId;
+    state.timelineAgent = agentId;
+    if (el.timelineAgent) el.timelineAgent.value = agentId;
+  }
+  document.querySelector('.event-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  render();
+});
+
+function openGuide(tab = 'start') {
+  state.guideTab = tab;
+  state.guideOpen = true;
+  renderGuide();
+}
+
+function closeGuide() {
+  state.guideOpen = false;
+  if (el.guideDontShow?.checked) localStorage.setItem('otelGuideSeen', 'true');
+  renderGuide();
+  el.helpButton?.focus();
+}
+
+el.helpButton.addEventListener('click', () => openGuide('start'));
+el.guideClose.addEventListener('click', closeGuide);
+el.guideBackdrop.addEventListener('click', (event) => {
+  if (event.target === el.guideBackdrop) closeGuide();
+});
+el.guideBackdrop.querySelectorAll('[data-guide-tab]').forEach((button) => {
+  button.addEventListener('click', () => {
+    state.guideTab = button.dataset.guideTab || 'start';
+    renderGuide();
+  });
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && state.guideOpen) closeGuide();
+});
+
 setConnection(false);
 await fetchInitial();
+if (!localStorage.getItem('otelGuideSeen')) openGuide('start');
 connectStream();
 setInterval(render, 1000);

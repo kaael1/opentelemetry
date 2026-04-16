@@ -1,6 +1,6 @@
 {
   "name": "opentelemetry",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local real-time dashboard for monitoring Codex spawned agents, sessions, tool calls, timelines, and parallel lanes.",
   "type": "module",
   "license": "MIT",
@@ -15,7 +15,12 @@
   "homepage": "https://github.com/kaael1/opentelemetry#readme",
   "scripts": {
     "start": "node server.mjs",
-    "check": "node --check server.mjs && node --check public/app.js"
+    "check": "node --check server.mjs && node --check public/app.js && node --check ai/corpus.mjs && node --check ai/embeddings.mjs && node --check ai/index.mjs && node --check ai/explain.mjs && node --check ai/story-questions.mjs && node --check scripts/ai-check.mjs && node --check scripts/ai-index.mjs",
+    "ai:check": "node scripts/ai-check.mjs",
+    "ai:index": "node scripts/ai-index.mjs"
+  },
+  "optionalDependencies": {
+    "@huggingface/transformers": "^3.0.0"
   },
   "keywords": [
     "codex",
