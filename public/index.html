@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Codex Agent Control</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230d0f0c'/%3E%3Cpath d='M10 34h12l5-10 9 20 6-10h12' fill='none' stroke='%23b8f35d' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Codex local telemetry</p>
+          <h1>Agent Control</h1>
+        </div>
+        <div class="hero-status">
+          <span id="connectionDot" class="dot"></span>
+          <span id="connectionText">conectando</span>
+          <span id="lastUpdate">--</span>
+        </div>
+      </section>
+
+      <section class="metrics" aria-label="Resumo">
+        <article><span id="metricAgents">0</span><p>agentes</p></article>
+        <article><span id="metricRunning">0</span><p>ativos</p></article>
+        <article><span id="metricSessions">0</span><p>sessões</p></article>
+        <article><span id="metricEvents">0</span><p>eventos</p></article>
+      </section>
+
+      <section class="command-strip">
+        <label class="search">
+          <span>Filtro</span>
+          <input id="filterInput" placeholder="nome, tarefa, arquivo" />
+        </label>
+        <label class="toggle">
+          <input id="liveOnly" type="checkbox" />
+          <span>ativos</span>
+        </label>
+        <button id="openState" type="button">JSON</button>
+      </section>
+
+      <section class="grid">
+        <article class="panel lanes-panel">
+          <header>
+            <h2>Parallel Lanes</h2>
+            <span id="laneCount">0 lanes</span>
+          </header>
+          <div class="lane-tools">
+            <label>
+              <span>Ordenar</span>
+              <select id="laneSort">
+                <option value="recent">recente</option>
+                <option value="active">mais ativo</option>
+                <option value="slow">mais lento</option>
+                <option value="problems">problemas</option>
+                <option value="session">sessão</option>
+              </select>
+            </label>
+            <label class="toggle">
+              <input id="showCompletedLanes" type="checkbox" checked />
+              <span>concluídos</span>
+            </label>
+            <button id="clearLaneFocus" type="button">Foco</button>
+          </div>
+          <div class="replay-bar">
+            <button id="replayToggle" type="button">Play</button>
+            <input id="replayScrubber" type="range" min="0" max="1000" value="1000" />
+            <select id="replaySpeed">
+              <option value="1">1x</option>
+              <option value="4">4x</option>
+              <option value="10">10x</option>
+            </select>
+            <span id="replayClock">ao vivo</span>
+          </div>
+          <div id="lanes" class="lanes"></div>
+        </article>
+
+        <article class="panel">
+          <header>
+            <h2>Designações</h2>
+            <span id="agentCount">0</span>
+          </header>
+          <div id="agentCards" class="agent-cards"></div>
+        </article>
+
+        <article class="panel">
+          <header>
+            <h2>Sessões Mãe</h2>
+            <span id="rootCount">0</span>
+          </header>
+          <div id="rootSessions" class="root-sessions"></div>
+        </article>
+
+        <article class="panel event-panel">
+          <header>
+            <h2>Timeline</h2>
+            <span id="eventCount">0</span>
+          </header>
+          <div class="timeline-tools">
+            <label>
+              <span>Agente</span>
+              <select id="timelineAgent">
+                <option value="">todos</option>
+              </select>
+            </label>
+            <label>
+              <span>Tipo</span>
+              <select id="timelineType">
+                <option value="">todos</option>
+              </select>
+            </label>
+            <label>
+              <span>Janela</span>
+              <select id="timelineWindow">
+                <option value="all">tudo</option>
+                <option value="15m">15m</option>
+                <option value="1h">1h</option>
+                <option value="24h">24h</option>
+              </select>
+            </label>
+            <label class="toggle">
+              <input id="problemsOnly" type="checkbox" />
+              <span>problemas</span>
+            </label>
+          </div>
+          <div id="timelineSummary" class="timeline-summary"></div>
+          <div id="events" class="events"></div>
+        </article>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
